@@ -3,7 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1f4430">
+<meta name="theme-color" content="#B00B00">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Study Labs">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Study Labs</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -34,12 +40,21 @@
   .course span{display:block; color:var(--muted); font-size:15px; margin-top:4px}
   .course .go{color:var(--note); font-weight:600; margin-top:10px}
   .course.soon{border-style:dashed}
+  .brandbar{display:flex; align-items:center; gap:12px; margin-bottom:12px}
+  .brandbar img{width:52px; height:52px; border-radius:12px}
+  .brandbar small{display:block; color:var(--muted); font-size:14px}
+  .install{display:none; background:var(--surface); border:1.5px solid #B00B00; border-radius:14px; padding:14px 16px; margin:16px 0}
+  .install > b{display:block; font:700 17px var(--serif)}
+  .install p{margin:6px 0 10px; font-size:15px; color:var(--muted)}
+  .install button{font:600 16px var(--sans); background:#B00B00; color:#fff; border:0; border-radius:10px; padding:12px 18px; min-height:46px; cursor:pointer}
+  .install .x{background:none; color:var(--muted); border:1.5px solid var(--border); margin-left:8px}
   @media (min-width:900px){ .wrap{max-width:860px} .courses{grid-template-columns:1fr 1fr} }
 </style>
 </head>
 <body>
 <main class="wrap">
-  <h1>Study Labs</h1>
+  <div class="brandbar"><img src="/icons/icon-192.png" alt="" width="52" height="52"><div><h1 style="margin:0">Study Labs</h1><small>SUNY Cortland</small></div></div>
+  <div class="install" id="install" role="region" aria-label="Install the app"><b>Get the Study Labs app</b><p id="install-msg"></p><div id="install-btns"></div></div>
   <p class="muted">Interactive practice spaces for each course: animated lessons, questions that explain themselves, flashcards and self-checks. Not graded. Progress saves on your own device.</p>
   <div class="courses" id="courses"></div>
 </main>
@@ -56,6 +71,26 @@ COURSES.forEach(c => {
   a.innerHTML = `<b>${c.title}</b><span>${c.desc}</span>${c.repo ? '<span class="go">Open course →</span>' : '<span>Coming soon</span>'}`;
   box.appendChild(a);
 });
+
+// ---- installable app ----
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("/sw.js");
+const instBox = document.getElementById("install"), msg = document.getElementById("install-msg"), btns = document.getElementById("install-btns");
+const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+let dismissed = false; try { dismissed = localStorage.getItem("install-dismissed") === "1"; } catch(e) {}
+const notNow = () => { const x = document.createElement("button"); x.className = "x"; x.type = "button"; x.textContent = "Not now"; x.onclick = () => { instBox.style.display = "none"; try { localStorage.setItem("install-dismissed","1"); } catch(e) {} }; return x; };
+let deferred = null;
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault(); deferred = e; if (standalone || dismissed) return;
+  msg.textContent = "Add it to your home screen or desktop: one tap to open, full screen, and labs you’ve opened work offline.";
+  const b = document.createElement("button"); b.type = "button"; b.textContent = "Install app";
+  b.onclick = async () => { deferred.prompt(); await deferred.userChoice; instBox.style.display = "none"; };
+  btns.replaceChildren(b, notNow()); instBox.style.display = "block";
+});
+const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+if (ios && !standalone && !dismissed){
+  msg.innerHTML = "In Safari, tap the <b>Share</b> button, then <b>Add to Home Screen</b>. It opens full screen, and labs you’ve opened work offline.";
+  btns.replaceChildren(notNow()); instBox.style.display = "block";
+}
 </script>
 </body>
 </html>
